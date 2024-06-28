@@ -2,9 +2,10 @@
   "name": "learning_backend",
   "version": "1.0.0",
   "description": "Learning backend from basics to advanced",
+  "type":"module",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev":"nodemon src/index.js"
   },
   "keywords": [
     "javascript",
@@ -12,5 +13,9 @@
     "chai"
   ],
   "author": "Ashutosh Sharan",
-  "license": "ISC"
+  "license": "ISC",
+  "devDependencies": {
+    "nodemon": "^3.1.4"
+
+  }
 }
