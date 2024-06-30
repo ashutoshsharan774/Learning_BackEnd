@@ -58,8 +58,9 @@ import bcrypt from 'bcrypt'
 userSchema.pre("save",async function(next) {
     if(!this.isModified("password")) return next();//if passoword mei modification ni hua h then return next() else encrypt the password
 
-    this.password= bcrypt.hash(this.password,10) //before fields being saved encrypt password (hash function ke andar 2 values do ,1st value:thing to be encrypted, 2nd value:no. of rounds)
+    this.password= await bcrypt.hash(this.password,10) //before fields being saved encrypt password (hash function ke andar 2 values do ,1st value:thing to be encrypted, 2nd value:no. of rounds)
     next()
+    //encryption of password takes time therefore await
     //a problem arises , jab bhi koi dusri field apart from password is changed , toh uske save hone se pahle ye password phir encrypt kr dega so we need to
     //specify that change and encrypt password only when there is any modification in password field (har bar password encrypt ni krna )
 })

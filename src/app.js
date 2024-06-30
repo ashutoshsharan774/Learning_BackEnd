@@ -27,4 +27,18 @@ app.use(express.static("public"))//jaise kayi baar pdf aayi ya images aayi toh a
 app.use(cookieParser())
 
 
+
+//routes import
+//import statement mei we can give name that we want only if we have export default
+import userRouter from './routes/userRoutes.js'
+
+//routes declaration (pahle we used to write app.get as routes same file mei declared the but ab routes dusre file mei h
+// therfore we need to bring middlewares in function so use app.use
+// )
+app.use("/api/v1/users",userRouter) //instead of just '/users' std. practice is to use api then its version then users
+//aise hi url banta h , ab isko as it is rhne dena h aur agr login krna h then userRoutes mei jakr login ke liye url bana dena(as we made for register)
+//basically control is now given to userRouter and then userRoutes mei jakr register pr ja
+
+//ye kuch aisa url dikhega : http://localhost:8000/api/v1/users/register
+
 export { app }

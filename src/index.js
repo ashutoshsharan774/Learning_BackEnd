@@ -1,7 +1,7 @@
 //require('dotenv).config({path:'./env})
 import dotenv from 'dotenv'
 import connectDB from './db/index.js';
-
+import {app} from './app.js'
 dotenv.config({
     path:'./env'
 })
@@ -11,8 +11,8 @@ dotenv.config({
 connectDB()//basically async await returns us a promise therefore we can apply .then ,.catch
 .then(()=>{
     app.listen(process.env.PORT || 8000,()=>{
-        console.log(`Server is running at port:$
-        {process.env.PORT}`);
+        console.log(`Server is running at port : 
+        ${process.env.PORT}`);
     }) //agar port ni mil rha then 8000 pr run kr lo
 })
 .catch((err)=>{
