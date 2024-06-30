@@ -33,7 +33,7 @@ const registerUser= asyncHandler(async(req,res)=>{
         throw new ApiError(400,"All fields are required");
     }
     //check if email contains @ or not
-    if(!email.includes('@')) throw new apiError(400,"@ is required char for a valid email");
+    if(!email.includes('@')) throw new ApiError(400,"@ is required char for a valid email");
 
     //checking if user already exists , for this we need to import all Users from model/User.model.js
     //User will only call mongodb on our behalf desired number of times ,
