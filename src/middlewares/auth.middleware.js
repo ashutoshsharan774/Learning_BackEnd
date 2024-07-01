@@ -6,6 +6,7 @@ import jwt from 'jsonwebtoken'
 import { User } from "../models/User.model.js";
 
 
+
 export const verifyJwt = asyncHandler(async(req,_,next)=>{//res k use ni h toh '_' likh skte ho
     //token ka access lenege, since req ke paas cookie ka access h that we gave in app.js 'app.use(cookieParser())'
     //agar accessToken ni ha(ho skta h cookies se accessToken na mile user ek custom header bhej raha ho for token as in case of mobile app)
@@ -31,7 +32,7 @@ export const verifyJwt = asyncHandler(async(req,_,next)=>{//res k use ni h toh '
         select("-password -refreshToken")
     
         if(!user){
-            //Next video : discuss about frontend
+          
             throw new ApiError(404,"Invalid Access Token")
         }
     
