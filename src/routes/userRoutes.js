@@ -1,8 +1,9 @@
 import { Router } from "express";
-import { registerUser } from "../controllers/user.controller.js";
+import { logOutUser, loginUser, registerUser } from "../controllers/user.controller.js";
 //is tarah ka import tabhi ho skta ha jb export default na ho
 
 import {upload} from "../middlewares/Multer.middleware.js"
+import { verifyJwt } from "../middlewares/auth.middleware.js";
 
 
 const router=Router()
@@ -23,6 +24,12 @@ router.route("/register").post(
         }
     ]),
     registerUser)
+
+
+router.route("/login").post(loginUser) //agar is route pr aaye toh post method loginUser run krna chahiye
+
+//securedRoutes || middleware inject kr do , ki logout hone se pahle i want to verify token
+router.route("/logout").post( verifyJwt, logOutUser)
 
 
 export default router
