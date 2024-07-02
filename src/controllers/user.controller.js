@@ -296,9 +296,148 @@ const refreshaccesstoken= asyncHandler(async(req,res)=>{
    }
 })
 
+const changeCurrentUserPassword =asyncHandler(async(req,res)=>{
+    const { oldPassword, newPassword } = req.body
+    //step1:we require a user tabhi toh uske field mei jaakr password verify krwa paynege
+    // ab user kaise le ,user password change kr pa raha mtlb wo logged in h
+    //how to find if user is loggedin toh we made a middleware for that , req.user=user se userid le skte h(jwt verify krke hmne kara th)
+   const user = await User.findById(req.user?._id)
+   //isPasswordCorrect method wwas designed by us in User.model.js,since user model aaya h through "User" toh iske paas isPAsswordCorrect method hoga
+   const isPasswordCorrect= await user.isPasswordCorrect(oldPassword)//since isPasswordCorrect is async method therfore we need to have await
+    if(!isPasswordCorrect){
+        throw new ApiError(400,"Invalid old Password")
+    }
+
+    //our old password is valid and now we wanna set new password
+    user.password=newPassword
+    await user.save({validatebeforeSave:false})
+    //since user is made through User->came from User.model.js therefore it has password method
+    //ab modify kr rhe password toh User.model.js mei jakr dekho ki bcrypt krkebhej rhe password
+    //jab user save hoga then only save hone se pahle modifications(in password field) will be taken in account and will be encrypted before being saved
+    return res
+    .status(200)
+    .json(new Apiresponse(200,{},"Password changed successfully"))
+
+    //agar confirm password wala concept apply krna then jaha pr humne req.body se extract kiya h waha confPassword bana
+    //if(!(confPassword===newPassword)){ throw new apiError("confPassword doesn't match")}
+
+})
+
+ //current get user since humne middleware banaya hi ha toh req mei user object add ho gya h 
+ const getCurrentUser = asyncHandler(async(req,res)=>{
+    return res.status(200)
+    .json(200,req.user,"current user fetched successfully")
+ })
+
+ //We decide in backend about what changes(in user account) are to be allowed for users
+ //agar any files are being updated like avatar,coverImage handle them in separate controller
+ const updateAccountDetails =asyncHandler(async(req,res)=>{
+    const {fullname, email} =req.body
+
+    if(!fullname || !email){
+        throw new ApiError(400,"All fields are required")
+    }
+   const user = User.findByIdAndUpdate(
+        req.user?._id,
+        {
+            //mongodb operator:set
+            $set:{
+                fullname,
+                email:email //both syntaxes are correct , fullname:fullname is same as fullname,
+            }
+        },
+        {new:true} //update hone ke baad ki info return ho jaati h
+
+        /*req.user?._id: This retrieves the _id of the user from the req object, using optional chaining (?.) to safely access the property even if req.user is undefined.
+$set: This operator is used to set the value of specific fields in the document. In this case, it sets the fullname and email fields. Both fullname and email are assumed to be variables containing the new values.
+{ new: true }: This option tells Mongoose to return the modified document rather than the original. */
+
+    ).select("-password") //agar yaha aise ni krte then user._id krek ek aur backend query hit krte db ko ,findbyid krke user do and then select password krke hata dete 
+    return res
+    .status(200)
+    .json(new Apiresponse(200,{},"Account details update successfully"))
+
+ })
+
+ //update files based data
+ //multer middleware lagani hogi, so that we may be able to accept files
+ //wahi log files accept kr paaye jo loggedIn ho
+ //the above two things are middleware and will be taken care off in routes
+
+ //controller for file updation
+ const updateUserAvatar=asyncHandler(async(req,res)=>{
+    //multer middleware ke through we got req.file ,here we are allowing updation of one avatar therefore just file not files
+    const avatarLocalPath= req.file?.path
+
+    if(!avatarLocalPath){
+        throw new ApiError(400,"Avatar file is missing")
+    }
+
+    //upload this avatar on cloudinary
+   const avatar= await uploadOnCloudinary(avatarLocalPath)
+    //if we didn't recieve email after avatar is uploaded
+   if(!avatar.url){
+    throw new ApiError(400,"Error while uploading on avatar")
+   }
+   //update
+   await User.findByIdAndUpdate(
+    req.user?._id,
+    {
+        $set:{
+            avatar:avatar.url //cloudinary ka pura object we recieved toh usme se sirf url update kro ,everything else will be taken care off kyuki we get a url by cloudinary (after we upload file on it)
+        }
+    },
+    {
+        new:true
+    }
+   ).select("-password")
+   return res
+   .status(200)
+   .json(new Apiresponse(200,user,"avatar updated successfully"))
+ })
+ 
+
+
+ const updateUserCoverImage=asyncHandler(async(req,res)=>{
+    //multer middleware ke through we got req.file ,here we are allowing updation of one avatar therefore just file not files
+    const coverImageLocalPath= req.file?.path
+
+    if(!coverImageLocalPath){
+        throw new ApiError(400,"cover image file is missing")
+    }
+
+    //upload this avatar on cloudinary
+   const coverImage= await uploadOnCloudinary(coverImageLocalPath)
+    //if we didn't recieve email after avatar is uploaded
+   if(!coverImage.url){
+    throw new ApiError(400,"Error while uploading on coverimage")
+   }
+   //update
+   const user= await User.findByIdAndUpdate(
+    req.user?._id,
+    {
+        $set:{
+            coverImage:coverImage.url //cloudinary ka pura object we recieved toh usme se sirf url update kro ,everything else will be taken care off kyuki we get a url by cloudinary (after we upload file on it)
+        }
+    },
+    {
+        new:true
+    }
+   ).select("-password")
+
+   return res
+   .status(200)
+   .json(new Apiresponse(200,user,"coverImage updated successfully"))
+ })
+
 
 export {registerUser,
     loginUser,
     logOutUser,
-    refreshaccesstoken
+    refreshaccesstoken,
+    changeCurrentUserPassword,
+    getCurrentUser,
+    updateAccountDetails,
+    updateUserAvatar,
+    updateUserCoverImage
 }
