@@ -620,3 +620,15 @@ export {registerUser,
     getUserChannelProfile,
     getWatchHistory
 }
+
+//An endpoint in the context of a backend refers to a specific URL at which a client can access a resource or perform an action provided by a server. 
+//URL Path: An endpoint is identified by a URL path. For example, in https://api.example.com/users, /users is an endpoint.
+/*
+HTTP Methods: Endpoints are typically associated with HTTP methods (verbs) that define the type of operation to perform:
+GET /users: Retrieve a list of all users.
+GET /users/{id}: Retrieve a specific user by their ID.
+POST /users: Create a new user.
+PUT /users/{id}: Update a specific user by their ID.
+DELETE /users/{id}: Delete a specific user by their ID.
+
+*/
