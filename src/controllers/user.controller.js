@@ -4,6 +4,7 @@ import {User} from "../models/User.model.js"
 import {uploadOnCloudinary} from "../utils/Cloudinary_services.js"
 import { Apiresponse } from "../utils/apiResponse.js";
 import jwt from "jsonwebtoken"
+import { application } from "express";
 
 const generateAccessandRefreshTokens = async(userId)=>{
     //user ke through user_id we can fetch
@@ -355,7 +356,7 @@ $set: This operator is used to set the value of specific fields in the document.
     ).select("-password") //agar yaha aise ni krte then user._id krek ek aur backend query hit krte db ko ,findbyid krke user do and then select password krke hata dete 
     return res
     .status(200)
-    .json(new Apiresponse(200,{},"Account details update successfully"))
+    .json(new Apiresponse(200,user,"Account details update successfully"))
 
  })
 
@@ -379,8 +380,9 @@ $set: This operator is used to set the value of specific fields in the document.
    if(!avatar.url){
     throw new ApiError(400,"Error while uploading on avatar")
    }
+   //TODO:delete old avatar
    //update
-   await User.findByIdAndUpdate(
+   const user = await User.findByIdAndUpdate(
     req.user?._id,
     {
         $set:{
@@ -430,6 +432,181 @@ $set: This operator is used to set the value of specific fields in the document.
    .json(new Apiresponse(200,user,"coverImage updated successfully"))
  })
 
+ const getUserChannelProfile = asyncHandler(async(req,res)=>{
+   const {username}= req.params //when we visit any channel we go to url ,we can fetch username from url using req.params, 
+   //it may be possible that params is empty
+   if(!username?.trim()){
+    throw new ApiError(400,"username is missing")
+   }
+  // User.find({username})//where clause inside find, User mei se username field k need ni ha just directly
+  //use aggregation wo field selection $match krlega
+   const channel = await User.aggregate([
+    {
+        $match:{
+            username:username?.toLowerCase()
+        }
+    },
+    //The $lookup aggregation stage in MongoDB performs a left outer join(a left-outer join returns all data from the left collection and any matching data from the right collection. If there is no matching data in the right collection, only data from the left collection is returned) 
+    // to another collection in the same database to filter in documents from the “joined” collection for processing. 
+    // This is useful when you want to combine data from multiple collections.
+    {//this lookup finds how many subsciber a channel has
+        $lookup:{
+            from:"subscriptions", //db mei Subscription model lowercase mei and plural ho jyegi ,This is the name of the other collection(subscription is a collection) you want to join with.
+            localField:"_id",//This is the field in the current collection's documents(_id field in current collection) that you will use to match with the other collection's documents.
+            foreignField:"channel", //This is the field in the other collection's documents(here other collection is subscription) that you will use to match with the current collection's documents.
+            as:"subscribers"
+            //subscriptions ko milana chahte h _id(user) se using channel and call it as subscribers(field)  //basically user._Id us channel k subscribers hue 
+        }
+
+    },
+    //another lookup to find how many of channels are subscribed by a channel
+    {
+        $lookup:{
+            from:"subscriptions",
+            localField:"_id",
+            foreignField:"subscriber",
+            as:"subscribedTo"
+        }
+
+    },
+    //$addfields:The $addFields stage in MongoDB's aggregation framework is used to add new fields to documents. It can also be used to modify existing fields. The new fields can be calculated based on the existing fields in the documents.
+
+    {
+        $addFields:{
+            subscribersCount:{
+                $size:"$subscribers" //since subscriber is a fields use $sign
+            },
+            channelsSubscribedToCount:{
+                $size:"$subscribedTo"
+            },
+            //to check if a user has subscribed or not
+            isSubscribed:{
+                $cond:{
+                   if: {$in: [req.user?._id,"$subscribers.subscriber"]}, //subscriber field ke inside object hit oh ha ,toh uske nadar jaakr dekh lo user present hh ki ni ($in array and object dono ke andar jaakr dekh leta h)
+                   then:true,
+                   else:false
+                }
+            }
+        }//The $addFields stage adds new fields to the documents.
+// The $size operator is used to count the number of elements in the arrays.
+
+
+    },
+    //$project:saari cheezein ni deni h selected dena h 
+    // The $project stage in MongoDB aggregation allows you to reshape documents by including, excluding, or adding new fields
+
+    {
+        $project:{
+            fullname:1,//flag 1 ha fullnaem ka that means 'fullname' ko include krna h
+            username:1,
+            subscribersCount:1,
+            channelsSubscribedToCount:1,
+            isSubscribed:1,
+            avatar:1,
+            coverImage:1,
+            email:1,
+            createdAt:1
+        }
+
+
+    }
+   ]) //aggregate is method that takes array of objects (objects are pipelines)
+   //db is in another continent
+
+
+   //is channel ko ek baar log into console and observe
+ //check if ki channel hi ni h
+ if(!channel?.length){
+    throw new ApiError(404,"channle doesn't exist")
+    }
+    return res
+    .status(200)
+    .json(new Apiresponse(200,channel[0],"User Channel fetched successfully"))
+
+
+ })
+
+
+
+ //How to get user watch hitory , have a look at model of backend,
+//  we have to use pipeline($lookup) for getting details of documnets of video collection
+//Now we use lookup pipeline for getting details of watchhistory form video collection, we will
+//be able to fetch documents but there is an owner object in video collection which itself is an 
+//user therefore we need to use nested lookup(wahi pr owner k details ke liye lookup lagana hoga
+    //so that we can fetch details of owner from user collection, this way we'll get all documnets for watchHistory)
+
+    const getWatchHistory=asyncHandler(async(req,res)=>{
+       // req.user?._id //Interview ques: What did we get overhere-> Here we get a string ,behind the scene is handled by mongoose which gives us mongodb id
+       const user= await User.aggregate([
+        {
+            $match:{//here we have to match field _id toh yaha ky hota h ki aggregation pipelines k jitna code that goes directly to mongodb
+                //mongoose has no role to play in it therefore we need to make mongoose's object id
+                _id:new mongoose.Types.ObjectId(req.user._id)
+                //id match kr gya i.e we got our user
+
+            }
+        },
+        //Lookup
+        {
+            $lookup:{
+                from:"videos",
+                localField:"watchHistory",
+                foreignField:"_id",
+                as:"watchHistory",
+                //now we need to use a subpipeline or else we won't get details of owner from video collection
+                pipeline:[
+                    {
+                        $lookup:{
+                            from:"users",
+                            localField: "owner",            //local collection mei dekh i.e videos k document i.e owner
+                            foreignField:"_id",
+                            as:"owner", //since ab owner ke andar user k pura data aa gya i.e avatar ,coverImage and all of that which we don't need to give
+                            //we have to give only selected fields so we can apply one more pipeline for that
+                            pipeline:[
+                                {//user ka jo fields we want to include , flag 1 kr do us field ka
+                                    $project:{//owner field ke inside hi project pipeline is gonna function
+                                        fullname:1,
+                                        username:1,
+                                        avatar:1
+                                    }
+
+                            }
+                        ]
+                        }
+                        
+                    },
+                    //This pipeline is to ensure that frontend ko data lene mei convinience  ho
+                    //lookup ke baad ,owner field mei data aaya ha in form of array , but we only give 0th value of array 
+                    //therfore array pr loop avoid krne ke liye we are applying this pipeline
+                    {
+                        $addFields:{
+                            //new name se bhi field add kr skte but here we are overriding owner field
+                            owner:{
+                                $first:"$owner" //since owner is a field so use $ before it to fetch value from it 
+                                //$first will fetch first element of array of owner field
+
+                            }
+                        }
+
+                    }
+            ]
+            }
+        }
+       ])
+
+       return res
+       .status(200)
+       .json(
+        new Apiresponse(
+            200,
+            user[0].getWatchHistory,
+            "WatchHistory fetched successfully"
+        )
+       )
+    })
+ 
+
+
 
 export {registerUser,
     loginUser,
@@ -439,5 +616,7 @@ export {registerUser,
     getCurrentUser,
     updateAccountDetails,
     updateUserAvatar,
-    updateUserCoverImage
+    updateUserCoverImage,
+    getUserChannelProfile,
+    getWatchHistory
 }
