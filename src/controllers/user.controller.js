@@ -224,12 +224,12 @@ const logOutUser= asyncHandler(async(req,res)=>{
      await User.findByIdAndUpdate(
         req.user._id,//agar req.user ha then usme se ._id we can find
         {
-            $set:{//mongodb method whicxsh asks for fields to be updated
-                refreshToken: undefined
+            $unset:{//mongodb method whicxsh asks for fields to unset, the field we wnat to undet pass flag 1
+                refreshToken: 1 //removes the field from document 
             }
         },
         {
-            new:true
+            new:true  //new: true is an option used with certain methods to specify that the function should return the modified document rather than the original one. This is often used in update operations.
         }
     )
     const options ={
@@ -615,7 +615,7 @@ export {registerUser,
     changeCurrentUserPassword,
     getCurrentUser,
     updateAccountDetails,
-    updateUserAvatar,
+    updateUserAvatar, 
     updateUserCoverImage,
     getUserChannelProfile,
     getWatchHistory
